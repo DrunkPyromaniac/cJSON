@@ -45,6 +45,13 @@ typedef struct {
 } error;
 static error global_error = { NULL, 0 };
 
+char s_tolower(char i)
+{
+	if (i >= 'A' && i <= 'Z')
+		return (i | 0x20); 
+	return i;
+}
+
 CJSON_PUBLIC(const char *) cJSON_GetErrorPtr(void)
 {
     return (const char*) (global_error.json + global_error.position);
@@ -74,7 +81,7 @@ static int cJSON_strcasecmp(const unsigned char *s1, const unsigned char *s2)
     {
         return 1;
     }
-    for(; tolower(*s1) == tolower(*s2); (void)++s1, ++s2)
+    for(; s_tolower(*s1) == s_tolower(*s2); (void)++s1, ++s2)
     {
         if (*s1 == '\0')
         {
@@ -82,7 +89,7 @@ static int cJSON_strcasecmp(const unsigned char *s1, const unsigned char *s2)
         }
     }
 
-    return tolower(*s1) - tolower(*s2);
+    return s_tolower(*s1) - s_tolower(*s2);
 }
 
 typedef struct internal_hooks
@@ -434,6 +441,7 @@ static cJSON_bool print_number(const cJSON * const item, printbuffer * const out
         return false;
     }
 
+#ifndef ARDUINO
     /* This checks for NaN and Infinity */
     if ((d * 0) != 0)
     {
@@ -454,6 +462,10 @@ static cJSON_bool print_number(const cJSON * const item, printbuffer * const out
     {
         length = sprintf((char*)output_pointer, "%f", d);
     }
+#else
+    length = sprintf((char*)output_pointer, "%ld", item->valueint);
+		trim_zeroes = false;
+#endif /* ARDUINO */
 
     /* sprintf failed */
     if (length < 0)
@@ -1964,7 +1976,7 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateBool(cJSON_bool b)
     return item;
 }
 
-CJSON_PUBLIC(cJSON *) cJSON_CreateNumber(double num)
+CJSON_PUBLIC(cJSON *) cJSON_CreateNumber(cJSON_num num)
 {
     cJSON *item = cJSON_New_Item(&global_hooks);
     if(item)
@@ -1972,6 +1984,7 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateNumber(double num)
         item->type = cJSON_Number;
         item->valuedouble = num;
 
+#ifndef ARDUINO
         /* use saturation in case of overflow */
         if (num >= CJSON_NUM_MAX)
         {
@@ -1985,6 +1998,9 @@ CJSON_PUBLIC(cJSON *) cJSON_CreateNumber(double num)
         {
             item->valueint = (cJSON_num)num;
         }
+#else
+        item->valueint = num;
+#endif
     }
 
     return item;
